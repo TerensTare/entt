@@ -109,7 +109,7 @@ struct scoped_use_memory_stream final {
     }
 
 private:
-    memor_stream *old;
+    memory_stream *old;
 };
 } // namespace entt
 
