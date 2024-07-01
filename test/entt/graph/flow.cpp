@@ -336,12 +336,15 @@ TEST(Flow, Loop) {
 }
 
 TEST(Flow, ThrowingAllocator) {
-    entt::basic_flow<test::throwing_allocator<entt::id_type>> flow{};
+    test::throwing_memory_stream<entt::id_type> stream{};
+    entt::scoped_use_memory_stream _{stream};
 
-    flow.get_allocator().throw_counter<std::pair<std::size_t, entt::id_type>>(0u);
+    entt::flow flow{};
+
+    ((decltype(stream))entt::get_memory_stream()).throw_counter<std::pair<std::size_t, entt::id_type>>(0u);
 
     ASSERT_EQ(flow.size(), 0u);
-    ASSERT_THROW(flow.bind(1), test::throwing_allocator_exception);
+    ASSERT_THROW(flow.bind(1), test::throwing_memory_stream_exception);
     ASSERT_EQ(flow.size(), 0u);
 
     flow.bind(1);

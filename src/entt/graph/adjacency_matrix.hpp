@@ -3,11 +3,12 @@
 
 #include <cstddef>
 #include <iterator>
-#include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
 #include "../config/config.h"
+#include "../core/allocator.hpp"
 #include "../core/iterator.hpp"
 #include "fwd.hpp"
 
@@ -89,18 +90,16 @@ template<typename Container>
 /**
  * @brief Basic implementation of a directed adjacency matrix.
  * @tparam Category Either a directed or undirected category tag.
- * @tparam Allocator Type of allocator used to manage memory and elements.
  */
-template<typename Category, typename Allocator>
+template<typename Category>
 class adjacency_matrix {
-    using alloc_traits = std::allocator_traits<Allocator>;
     static_assert(std::is_base_of_v<directed_tag, Category>, "Invalid graph category");
     static_assert(std::is_same_v<typename alloc_traits::value_type, std::size_t>, "Invalid value type");
-    using container_type = std::vector<std::size_t, typename alloc_traits::template rebind_alloc<std::size_t>>;
+    using container_type = std::vector<std::size_t, stream_allocator<std::size_t>>;
 
 public:
     /*! @brief Allocator type. */
-    using allocator_type = Allocator;
+    using allocator_type = stream_allocator<std::size_t>;
     /*! @brief Unsigned integer type. */
     using size_type = std::size_t;
     /*! @brief Vertex type. */
@@ -119,24 +118,16 @@ public:
     using graph_category = Category;
 
     /*! @brief Default constructor. */
-    adjacency_matrix() noexcept(noexcept(allocator_type{}))
+    adjacency_matrix()
         : adjacency_matrix{0u} {}
 
     /**
-     * @brief Constructs an empty container with a given allocator.
-     * @param allocator The allocator to use.
-     */
-    explicit adjacency_matrix(const allocator_type &allocator) noexcept
-        : adjacency_matrix{0u, allocator} {}
-
-    /**
-     * @brief Constructs an empty container with a given allocator and user
+     * @brief Constructs an empty container with a user
      * supplied number of vertices.
      * @param vertices Number of vertices.
-     * @param allocator The allocator to use.
      */
-    adjacency_matrix(const size_type vertices, const allocator_type &allocator = allocator_type{})
-        : matrix{vertices * vertices, allocator},
+    adjacency_matrix(const size_type vertices)
+        : matrix{vertices * vertices},
           vert{vertices} {}
 
     /**
@@ -144,32 +135,14 @@ public:
      * @param other The instance to copy from.
      */
     adjacency_matrix(const adjacency_matrix &other)
-        : adjacency_matrix{other, other.get_allocator()} {}
-
-    /**
-     * @brief Allocator-extended copy constructor.
-     * @param other The instance to copy from.
-     * @param allocator The allocator to use.
-     */
-    adjacency_matrix(const adjacency_matrix &other, const allocator_type &allocator)
-        : matrix{other.matrix, allocator},
-          vert{other.vert} {}
+        : adjacency_matrix{other} {}
 
     /**
      * @brief Move constructor.
      * @param other The instance to move from.
      */
     adjacency_matrix(adjacency_matrix &&other) noexcept
-        : adjacency_matrix{std::move(other), other.get_allocator()} {}
-
-    /**
-     * @brief Allocator-extended move constructor.
-     * @param other The instance to move from.
-     * @param allocator The allocator to use.
-     */
-    adjacency_matrix(adjacency_matrix &&other, const allocator_type &allocator)
-        : matrix{std::move(other.matrix), allocator},
-          vert{std::exchange(other.vert, 0u)} {}
+        : adjacency_matrix{std::move(other)} {}
 
     /**
      * @brief Default copy assignment operator.
@@ -191,14 +164,6 @@ public:
         matrix = std::move(other.matrix);
         vert = std::exchange(other.vert, 0u);
         return *this;
-    }
-
-    /**
-     * @brief Returns the associated allocator.
-     * @return The associated allocator.
-     */
-    [[nodiscard]] constexpr allocator_type get_allocator() const noexcept {
-        return matrix.get_allocator();
     }
 
     /*! @brief Clears the adjacency matrix. */
@@ -285,7 +250,7 @@ public:
      * @param vertices The new number of vertices.
      */
     void resize(const size_type vertices) {
-        adjacency_matrix other{vertices, get_allocator()};
+        adjacency_matrix other{vertices};
 
         for(auto [lhs, rhs]: edges()) {
             other.insert(lhs, rhs);

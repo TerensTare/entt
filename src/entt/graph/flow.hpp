@@ -23,16 +23,12 @@ namespace entt {
 
 /**
  * @brief Utility class for creating task graphs.
- * @tparam Allocator Type of allocator used to manage memory and elements.
  */
-template<typename Allocator>
 class basic_flow {
-    using alloc_traits = std::allocator_traits<Allocator>;
-    static_assert(std::is_same_v<typename alloc_traits::value_type, id_type>, "Invalid value type");
-    using task_container_type = dense_set<id_type, identity, std::equal_to<id_type>, typename alloc_traits::template rebind_alloc<id_type>>;
-    using ro_rw_container_type = std::vector<std::pair<std::size_t, bool>, typename alloc_traits::template rebind_alloc<std::pair<std::size_t, bool>>>;
-    using deps_container_type = dense_map<id_type, ro_rw_container_type, identity, std::equal_to<id_type>, typename alloc_traits::template rebind_alloc<std::pair<const id_type, ro_rw_container_type>>>;
-    using adjacency_matrix_type = adjacency_matrix<directed_tag, typename alloc_traits::template rebind_alloc<std::size_t>>;
+    using task_container_type = dense_set<id_type, identity, std::equal_to<id_type>, stream_allocator<id_type>>;
+    using ro_rw_container_type = std::vector<std::pair<std::size_t, bool>, stream_allocator<std::pair<std::size_t, bool>>>;
+    using deps_container_type = dense_map<id_type, ro_rw_container_type, identity, std::equal_to<id_type>, stream_allocator<std::pair<const id_type, ro_rw_container_type>>>;
+    using adjacency_matrix_type = adjacency_matrix<directed_tag>;
 
     void emplace(const id_type res, const bool is_rw) {
         ENTT_ASSERT(index.first() < vertices.size(), "Invalid node");
@@ -116,7 +112,7 @@ class basic_flow {
 
 public:
     /*! @brief Allocator type. */
-    using allocator_type = Allocator;
+    using allocator_type = stream_allocator<id_type>;
     /*! @brief Unsigned integer type. */
     using size_type = std::size_t;
     /*! @brief Iterable task list. */
@@ -126,45 +122,16 @@ public:
 
     /*! @brief Default constructor. */
     basic_flow()
-        : basic_flow{allocator_type{}} {}
-
-    /**
-     * @brief Constructs a flow builder with a given allocator.
-     * @param allocator The allocator to use.
-     */
-    explicit basic_flow(const allocator_type &allocator)
-        : index{0u, allocator},
-          vertices{allocator},
-          deps{allocator},
+        : index{0u, allocator_type{}},
+          vertices{},
+          deps{},
           sync_on{} {}
 
     /*! @brief Default copy constructor. */
     basic_flow(const basic_flow &) = default;
 
-    /**
-     * @brief Allocator-extended copy constructor.
-     * @param other The instance to copy from.
-     * @param allocator The allocator to use.
-     */
-    basic_flow(const basic_flow &other, const allocator_type &allocator)
-        : index{other.index.first(), allocator},
-          vertices{other.vertices, allocator},
-          deps{other.deps, allocator},
-          sync_on{other.sync_on} {}
-
     /*! @brief Default move constructor. */
     basic_flow(basic_flow &&) noexcept = default;
-
-    /**
-     * @brief Allocator-extended move constructor.
-     * @param other The instance to move from.
-     * @param allocator The allocator to use.
-     */
-    basic_flow(basic_flow &&other, const allocator_type &allocator)
-        : index{other.index.first(), allocator},
-          vertices{std::move(other.vertices), allocator},
-          deps{std::move(other.deps), allocator},
-          sync_on{other.sync_on} {}
 
     /**
      * @brief Default copy assignment operator.
@@ -177,14 +144,6 @@ public:
      * @return This flow builder.
      */
     basic_flow &operator=(basic_flow &&) noexcept = default;
-
-    /**
-     * @brief Returns the associated allocator.
-     * @return The associated allocator.
-     */
-    [[nodiscard]] constexpr allocator_type get_allocator() const noexcept {
-        return allocator_type{index.second()};
-    }
 
     /**
      * @brief Returns the identifier at specified location.
@@ -328,7 +287,7 @@ public:
      * @return The adjacency matrix of the task graph.
      */
     [[nodiscard]] graph_type graph() const {
-        graph_type matrix{vertices.size(), get_allocator()};
+        graph_type matrix{vertices.size()};
 
         setup_graph(matrix);
         transitive_closure(matrix);

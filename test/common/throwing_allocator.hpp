@@ -6,47 +6,33 @@
 #include <memory>
 #include <type_traits>
 #include <entt/container/dense_map.hpp>
+#include <entt/core/allocator.hpp>
 #include <entt/core/fwd.hpp>
 #include <entt/core/type_info.hpp>
 
 namespace test {
 
-struct throwing_allocator_exception {};
+struct throwing_memory_stream_exception {};
 
 template<typename Type>
-class throwing_allocator {
-    template<typename Other>
-    friend class throwing_allocator;
+class throwing_memory_stream final: public entt::memory_stream {
+    using node_allocator = entt::stream_allocator<std::pair<const entt::id_type, std::size_t>>;
 
 public:
-    using value_type = Type;
-    using pointer = value_type *;
-    using const_pointer = const value_type *;
-    using void_pointer = void *;
-    using const_void_pointer = const void *;
-    using propagate_on_container_move_assignment = std::true_type;
-    using propagate_on_container_swap = std::true_type;
     using container_type = entt::dense_map<entt::id_type, std::size_t>;
 
-    template<typename Other>
-    struct rebind {
-        using other = throwing_allocator<Other>;
-    };
-
-    throwing_allocator()
-        : allocator{},
-          config{std::allocate_shared<container_type>(allocator)} {}
+    throwing_memory_stream()
+        : config{std::allocate_shared<container_type>(node_allocator{})} {}
 
     template<typename Other>
-    throwing_allocator(const throwing_allocator<Other> &other)
-        : allocator{other.allocator},
-          config{other.config} {}
+    throwing_memory_stream(const throwing_memory_stream<Type> &other)
+        : config{other.config} {}
 
-    pointer allocate(std::size_t length) {
+    void *allocate(std::size_t length, std::size_t align, entt::allocation_flags flags) override {
         if(const auto hash = entt::type_id<Type>().hash(); config->contains(hash)) {
             if(auto &elem = (*config)[hash]; elem == 0u) {
                 config->erase(hash);
-                throw throwing_allocator_exception{};
+                throw throwing_memory_stream_exception{};
             } else {
                 --elem;
             }
@@ -55,8 +41,11 @@ public:
         return allocator.allocate(length);
     }
 
-    void deallocate(pointer mem, std::size_t length) {
-        allocator.deallocate(mem, length);
+    void deallocate(void *mem, std::size_t length, std::size_t align) override {
+    }
+
+    bool is_equal_with(const memory_stream &other) const noexcept override {
+        return dynamic_cast<const throwing_memory_stream<Type> *>(&other) != nullptr;
     }
 
     template<typename Other>
