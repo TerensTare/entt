@@ -24,8 +24,8 @@ TEST(AdjacencyMatrix, Constructors) {
 
     ASSERT_EQ(adjacency_matrix.size(), 0u);
 
-    adjacency_matrix = entt::adjacency_matrix<entt::directed_tag>{std::allocator<bool>{}};
-    adjacency_matrix = entt::adjacency_matrix<entt::directed_tag>{3u, std::allocator<bool>{}};
+    adjacency_matrix = entt::adjacency_matrix<entt::directed_tag>{};
+    adjacency_matrix = entt::adjacency_matrix<entt::directed_tag>{3u};
 
     ASSERT_TRUE(adjacency_matrix.empty());
     ASSERT_EQ(adjacency_matrix.size(), 3u);
@@ -34,8 +34,8 @@ TEST(AdjacencyMatrix, Constructors) {
 
     ASSERT_FALSE(adjacency_matrix.empty());
 
-    const entt::adjacency_matrix<entt::directed_tag> temp{adjacency_matrix, adjacency_matrix.get_allocator()};
-    const entt::adjacency_matrix<entt::directed_tag> other{std::move(adjacency_matrix), adjacency_matrix.get_allocator()};
+    const entt::adjacency_matrix<entt::directed_tag> temp{adjacency_matrix};
+    const entt::adjacency_matrix<entt::directed_tag> other{std::move(adjacency_matrix)};
 
     test::is_initialized(adjacency_matrix);
 
@@ -560,14 +560,17 @@ TEST(AdjacencyMatrix, InEdgesBackwardOnlyUndirected) {
 }
 
 TEST(AdjacencyMatrix, ThrowingAllocator) {
-    entt::adjacency_matrix<entt::directed_tag, test::throwing_allocator<std::size_t>> adjacency_matrix{2u};
+    test::throwing_memory_stream<entt::id_type> stream{};
+    entt::scoped_use_memory_stream _{stream};
+
+    entt::adjacency_matrix<entt::directed_tag> adjacency_matrix{2u};
     adjacency_matrix.insert(0u, 1u);
-    adjacency_matrix.get_allocator().throw_counter<std::size_t>(0u);
+    ((decltype(stream) *)entt::get_memory_stream())->throw_counter<std::size_t>(0u);
 
     ASSERT_EQ(adjacency_matrix.size(), 2u);
     ASSERT_TRUE(adjacency_matrix.contains(0u, 1u));
 
-    ASSERT_THROW(adjacency_matrix.resize(4u), test::throwing_allocator_exception);
+    ASSERT_THROW(adjacency_matrix.resize(4u), test::throwing_memory_stream_exception);
 
     ASSERT_EQ(adjacency_matrix.size(), 2u);
     ASSERT_TRUE(adjacency_matrix.contains(0u, 1u));

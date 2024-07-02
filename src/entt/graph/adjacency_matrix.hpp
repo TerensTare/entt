@@ -94,7 +94,6 @@ template<typename Container>
 template<typename Category>
 class adjacency_matrix {
     static_assert(std::is_base_of_v<directed_tag, Category>, "Invalid graph category");
-    static_assert(std::is_same_v<typename alloc_traits::value_type, std::size_t>, "Invalid value type");
     using container_type = std::vector<std::size_t, stream_allocator<std::size_t>>;
 
 public:
@@ -135,14 +134,16 @@ public:
      * @param other The instance to copy from.
      */
     adjacency_matrix(const adjacency_matrix &other)
-        : adjacency_matrix{other} {}
+        : matrix{other.matrix},
+          vert{other.vert} {}
 
     /**
      * @brief Move constructor.
      * @param other The instance to move from.
      */
     adjacency_matrix(adjacency_matrix &&other) noexcept
-        : adjacency_matrix{std::move(other)} {}
+        : matrix{std::move(other.matrix)},
+          vert{std::exchange(other.vert, 0u)} {}
 
     /**
      * @brief Default copy assignment operator.

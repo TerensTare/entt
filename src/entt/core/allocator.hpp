@@ -27,7 +27,7 @@ struct new_delete_stream final: memory_stream {
         return stream;
     }
 
-    void *allocate(std::size_t n, std::size_t align, allocation_flags flags) override {
+    void *allocate(std::size_t n, std::size_t align, allocation_flags /* flags */) override {
         return ::operator new(n, static_cast<std::align_val_t>(align));
     }
 
@@ -47,16 +47,16 @@ namespace internal {
 inline static memory_stream *default_memory_stream = &new_delete_stream::instance();
 } // namespace internal
 
-memory_stream *get_memory_stream() {
+inline memory_stream *get_memory_stream() {
     return internal::default_memory_stream;
 }
 
-memory_stream *set_memory_stream(memory_stream *stream) {
+inline memory_stream *set_memory_stream(memory_stream *stream) {
     return std::exchange(internal::default_memory_stream, stream);
 }
 
 template<typename T, typename... Args>
-T *allocate_construct(memory_stream *stream, allocation_flags flags, Args &&...args) {
+inline T *allocate_construct(memory_stream *stream, allocation_flags flags, Args &&...args) {
     static_assert(std::is_constructible_v<T, Args &&...>, "Cannot construct this type with the given params!");
 
     auto *ptr = stream->allocate(sizeof(T), alignof(T), flags);
@@ -64,7 +64,7 @@ T *allocate_construct(memory_stream *stream, allocation_flags flags, Args &&...a
 }
 
 template<typename T>
-void deallocate_destroy(memory_stream *stream, T *ptr) {
+inline void deallocate_destroy(memory_stream *stream, T *ptr) {
     ptr->~T();
     stream->deallocate(ptr, sizeof(T), alignof(T));
 }
@@ -73,7 +73,7 @@ template<typename T>
 struct stream_allocator final {
     using value_type = T;
 
-    constexpr stream_allocator() noexcept {}
+    constexpr stream_allocator() noexcept = default;
 
     template<typename U>
     constexpr stream_allocator(const stream_allocator<U> &) noexcept {}
@@ -87,13 +87,13 @@ struct stream_allocator final {
     }
 
     template<typename U>
-    constexpr bool operator==(const stream_allocator<U> &other) const noexcept {
-        return get_memory_stream()->is_equal_with(*other.stream);
+    constexpr bool operator==(const stream_allocator<U> &) const noexcept {
+        return true;
     }
 
     template<typename U>
-    constexpr bool operator!=(const stream_allocator<U> &other) const noexcept {
-        return !(*this == other);
+    constexpr bool operator!=(const stream_allocator<U> &) const noexcept {
+        return false;
     }
 };
 

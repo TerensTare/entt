@@ -15,7 +15,7 @@ TEST(Flow, Constructors) {
     ASSERT_TRUE(flow.empty());
     ASSERT_EQ(flow.size(), 0u);
 
-    flow = entt::flow{std::allocator<entt::id_type>{}};
+    flow = entt::flow{};
 
     ASSERT_TRUE(flow.empty());
     ASSERT_EQ(flow.size(), 0u);
@@ -27,8 +27,8 @@ TEST(Flow, Constructors) {
     ASSERT_FALSE(flow.empty());
     ASSERT_EQ(flow.size(), 3u);
 
-    const entt::flow temp{flow, flow.get_allocator()};
-    const entt::flow other{std::move(flow), flow.get_allocator()};
+    const entt::flow temp{flow};
+    const entt::flow other{std::move(flow)};
 
     test::is_initialized(flow);
 
@@ -341,7 +341,7 @@ TEST(Flow, ThrowingAllocator) {
 
     entt::flow flow{};
 
-    ((decltype(stream))entt::get_memory_stream()).throw_counter<std::pair<std::size_t, entt::id_type>>(0u);
+    ((decltype(stream) *)entt::get_memory_stream())->throw_counter<std::pair<std::size_t, entt::id_type>>(0u);
 
     ASSERT_EQ(flow.size(), 0u);
     ASSERT_THROW(flow.bind(1), test::throwing_memory_stream_exception);
