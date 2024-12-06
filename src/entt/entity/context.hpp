@@ -2,7 +2,7 @@
 #define ENTT_ENTITY_CONTEXT_HPP
 
 #include "../container/dense_map.hpp"
-#include "any.hpp"
+#include "../core/any.hpp"
 
 namespace entt {
 
@@ -92,7 +92,7 @@ struct unique_lock final {
 
     explicit unique_lock(Mutex &mtx)
         : mtx{std::addressof(mtx)} {
-        mtx->lock();
+        mtx.lock();
     }
 
     unique_lock(unique_lock const &) = delete;
