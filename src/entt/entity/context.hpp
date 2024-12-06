@@ -91,8 +91,7 @@ struct unique_lock final {
     static_assert(is_lockable<mutex_type>::value, "Invalid mutex type!");
 
     explicit unique_lock(Mutex &mtx)
-        : mtx{std::addressof(mtx)},
-          owns{true} {
+        : mtx{std::addressof(mtx)} {
         mtx->lock();
     }
 
@@ -100,30 +99,27 @@ struct unique_lock final {
     unique_lock &operator=(unique_lock const &) = delete;
 
     unique_lock(unique_lock &&other)
-        : mtx{std::exchange(other.mtx, nullptr)},
-          owns{std::exchange(other.owns, false)} {}
+        : mtx{std::exchange(other.mtx, nullptr)} {}
 
     unique_lock &operator=(unique_lock &&other) {
         if(this != std::addressof(other)) {
-            if(owns) {
+            if(mtx) {
                 mtx->unlock();
             }
 
             mtx = std::exchange(other.mtx, nullptr);
-            owns = std::exchange(other.owns, false);
         }
         return *this;
     }
 
     ~unique_lock() {
-        if(owns) {
+        if(mtx) {
             mtx->unlock();
         }
     }
 
 private:
     Mutex *mtx;
-    bool owns = false;
 };
 
 } // namespace internal
