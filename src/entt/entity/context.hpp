@@ -148,14 +148,28 @@ public:
      * @param mtx The reference to the mutex to use.
      */
     locked_context(Context &ctx, Mutex &mtx)
-        : ctx{&ctx},
-          mtx{&mtx} {}
+        : ctx{std::addressof(ctx)},
+          mtx{std::addressof(mtx)} {}
 
     /*! @brief A locked context cannot be copied. */
     locked_context(locked_context const &) = delete;
 
     /*! @brief A locked context cannot be copied. */
     locked_context &operator=(locked_context const &) = delete;
+
+    /*! @brief A locked context can be moved. */
+    locked_context(locked_context &&other) noexcept
+        : ctx{std::exchange(other.ctx, nullptr)},
+          mtx{std::exchange(other.mtx, nullptr)} {}
+
+    /*! @brief A locked context can be moved. */
+    locked_context &operator=(locked_context &&other) noexcept {
+        if(this != &other) {
+            ctx = std::exchange(other.ctx, nullptr);
+            mtx = std::exchange(other.mtx, nullptr);
+        }
+        return *this;
+    }
 
     /**
      * @brief Emplaces a new entry of given type to the given id using the given arguments.
